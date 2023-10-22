@@ -1,19 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
-	"golang.org/x/net/webdav"
+	"github.com/coconutLatte/volume-adaptor/webdav"
 )
 
 func main() {
-	// 设置要共享的目录
-	dir := "/path/to/your/directory"
+	adaptor, err := webdav.NewYSStorageAdaptor()
+	if err != nil {
+		panic(fmt.Sprintf("new ys storage adaptor failed, %v", err))
+	}
 
 	// 创建一个WebDAV文件服务器
 	fs := &webdav.Handler{
-		FileSystem: webdav.Dir(dir),
+		FileSystem: adaptor,
+		//FileSystem: webdav.Dir("/"),
 		LockSystem: webdav.NewMemLS(),
 	}
 
@@ -21,7 +25,7 @@ func main() {
 	port := ":8080"
 	serverAddr := "0.0.0.0" + port
 	log.Printf("WebDAV server is listening on %s...\n", serverAddr)
-	err := http.ListenAndServe(serverAddr, fs)
+	err = http.ListenAndServe(serverAddr, fs)
 	if err != nil {
 		log.Fatal("Error:", err)
 	}
