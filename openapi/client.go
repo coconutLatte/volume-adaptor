@@ -30,6 +30,7 @@ func NewClient(ysId, accessKey, accessSecret string) (*Client, error) {
 	cli, err := openys.NewClient(
 		credential.NewCredential(accessKey, accessSecret),
 		openys.WithBaseURL(storageEndpoint),
+		openys.WithRetryTimes(1),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create openapi client failed")
@@ -113,7 +114,22 @@ func (c *Client) Stat(path string) (os.FileInfo, error) {
 		c.base.Storage.Stat.Path(c.filePath(path)),
 	)
 	if err != nil {
-		return nil, err
+		return nil, os.ErrNotExist
+
+		//errResp, ok := err.(*common.ErrorResp)
+		//if ok {
+		//	if err = jsoniter.Unmarshal(errResp.RawBody(), resp); err != nil {
+		//		return nil, err
+		//	}
+		//
+		//	logging.Default().Errorf("%#v", resp)
+		//	if resp.Response.ErrorCode == "PathNotFound" {
+		//		//return nil, os.ErrNotExist
+		//		return nil, &fs.PathError{}
+		//	}
+		//}
+		//
+		//return nil, err
 	}
 	if resp == nil || resp.Data == nil || resp.Data.File == nil {
 		return nil, fmt.Errorf("invalid stat response data")
@@ -123,13 +139,16 @@ func (c *Client) Stat(path string) (os.FileInfo, error) {
 }
 
 func (c *Client) filePath(path string) string {
-	fmt.Println(c)
 	res := "/" + c.ysId + path
 
 	return res
 }
 
 func (c *Client) LsWithPage(path string, count int64) ([]os.FileInfo, error) {
+	if count == 0 {
+		count = 100
+	}
+
 	resp, err := c.base.Storage.LsWithPage(
 		c.base.Storage.LsWithPage.Path(c.filePath(path)),
 		c.base.Storage.LsWithPage.PageSize(count),

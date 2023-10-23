@@ -27,7 +27,7 @@ func NewYSStorageAdaptor() (*YSStorageAdaptor, error) {
 }
 
 func (s *YSStorageAdaptor) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	logging.Default().Info("mkdir")
+	logging.Default().Infof("mkdir, name: %s", name)
 
 	return s.cli.Mkdir(name)
 }
@@ -107,6 +107,8 @@ func (f *ysStorageFile) Close() error {
 }
 
 func (s *YSStorageAdaptor) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (File, error) {
+	logging.Default().Infof("openFile, name: %s", name)
+
 	return &ysStorageFile{
 		cli:  s.cli,
 		path: name,
@@ -114,14 +116,20 @@ func (s *YSStorageAdaptor) OpenFile(ctx context.Context, name string, flag int, 
 }
 
 func (s *YSStorageAdaptor) RemoveAll(ctx context.Context, name string) error {
+	logging.Default().Infof("removeAll, name: %s", name)
+
 	return nil
 }
 
 func (s *YSStorageAdaptor) Rename(ctx context.Context, oldName, newName string) error {
+	logging.Default().Infof("rename, oldName: %s, newName: %s", oldName, newName)
+
 	return nil
 }
 
 func (s *YSStorageAdaptor) Stat(ctx context.Context, name string) (os.FileInfo, error) {
+	logging.Default().Infof("stat, name: %s", name)
+
 	fi, err := s.cli.Stat(name)
 	if err != nil {
 		logging.Default().Errorf("call stat api failed, %v", err)
