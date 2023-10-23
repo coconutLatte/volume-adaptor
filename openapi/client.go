@@ -31,6 +31,7 @@ func NewClient(ysId, accessKey, accessSecret string) (*Client, error) {
 		credential.NewCredential(accessKey, accessSecret),
 		openys.WithBaseURL(storageEndpoint),
 		openys.WithRetryTimes(1),
+		openys.WithRetryInterval(time.Millisecond),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create openapi client failed")
@@ -65,7 +66,7 @@ func (c *Client) ReadAt(path string, offset, length int64) ([]byte, error) {
 
 func (c *Client) WriteAt(path string, p []byte, offset int64) error {
 	_, err := c.base.Storage.WriteAt(
-		c.base.Storage.WriteAt.Path(path),
+		c.base.Storage.WriteAt.Path(c.filePath(path)),
 		c.base.Storage.WriteAt.Offset(offset),
 		c.base.Storage.WriteAt.Length(int64(len(p))),
 		c.base.Storage.WriteAt.Data(bytes.NewBuffer(p)),

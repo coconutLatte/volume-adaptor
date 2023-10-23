@@ -3,6 +3,7 @@ package webdav
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 
@@ -41,23 +42,63 @@ type ysStorageFile struct {
 }
 
 func (f *ysStorageFile) Read(p []byte) (n int, err error) {
+	logging.Default().Info("ysStorageFile read")
+
+	// TODO make it cache able
+	fi, err := f.cli.Stat(f.path)
+	if err != nil {
+		return 0, os.ErrInvalid
+	}
+	if fi.IsDir() {
+		return 0, os.ErrInvalid
+	}
+
 	data, err := f.cli.ReadAt(f.path, f.fileIndex, int64(len(p)))
 	if err != nil {
 		logging.Default().Errorf("read file failed, %v", err)
 		return -1, err
 	}
-	p = data
+	copy(p, data)
+
 	f.fileIndex += int64(len(data))
+
+	logging.Default().Infof("read result: %s", string(p))
 
 	return len(data), nil
 }
 
 func (f *ysStorageFile) Seek(offset int64, whence int) (int64, error) {
-	// TODO
-	return f.f.Seek(offset, whence)
+	logging.Default().Infof("ysStorageFile seek, offset: %d, whence: %d", offset, whence)
+
+	// TODO make it cache able
+	fi, err := f.cli.Stat(f.path)
+	if err != nil {
+		return 0, os.ErrInvalid
+	}
+
+	npos := f.fileIndex
+	switch whence {
+	case io.SeekStart:
+		npos = offset
+	case io.SeekCurrent:
+		npos += offset
+	case io.SeekEnd:
+		npos = fi.Size() + offset
+	default:
+		npos = -1
+	}
+
+	if npos < 0 {
+		return 0, os.ErrInvalid
+	}
+	f.fileIndex = npos
+
+	return f.fileIndex, nil
 }
 
 func (f *ysStorageFile) Readdir(count int) ([]fs.FileInfo, error) {
+	logging.Default().Info("ysStorageFile readdir")
+
 	// call stat
 	fi, err := f.cli.Stat(f.path)
 	if err != nil {
@@ -79,6 +120,8 @@ func (f *ysStorageFile) Readdir(count int) ([]fs.FileInfo, error) {
 }
 
 func (f *ysStorageFile) Stat() (fs.FileInfo, error) {
+	logging.Default().Info("ysStorageFile stat")
+
 	fi, err := f.cli.Stat(f.path)
 	if err != nil {
 		logging.Default().Error(err)
@@ -89,6 +132,8 @@ func (f *ysStorageFile) Stat() (fs.FileInfo, error) {
 }
 
 func (f *ysStorageFile) Write(p []byte) (n int, err error) {
+	logging.Default().Info("ysStorageFile write")
+
 	lenP := len(p)
 
 	err = f.cli.WriteAt(f.path, p, f.fileIndex)
