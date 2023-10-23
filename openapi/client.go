@@ -171,3 +171,31 @@ func (c *Client) LsWithPage(path string, count int64) ([]os.FileInfo, error) {
 
 	return fis, nil
 }
+
+func (c *Client) Rename(src, dst string) error {
+	logging.Default().Infof("rename, src [%s], dst [%s]", src, dst)
+
+	_, err := c.base.Storage.Mv(
+		c.base.Storage.Mv.Src(c.filePath(src)),
+		c.base.Storage.Mv.Dest(c.filePath(dst)),
+	)
+	if err != nil {
+		return os.ErrInvalid
+	}
+
+	return nil
+}
+
+func (c *Client) RemoveAll(path string) error {
+	logging.Default().Infof("removeAll, path [%s]", path)
+
+	_, err := c.base.Storage.Rm(
+		c.base.Storage.Rm.Path(c.filePath(path)),
+		c.base.Storage.Rm.IgnoreNotExist(true),
+	)
+	if err != nil {
+		return os.ErrInvalid
+	}
+
+	return nil
+}

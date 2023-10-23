@@ -118,13 +118,13 @@ func (s *YSStorageAdaptor) OpenFile(ctx context.Context, name string, flag int, 
 func (s *YSStorageAdaptor) RemoveAll(ctx context.Context, name string) error {
 	logging.Default().Infof("removeAll, name: %s", name)
 
-	return nil
+	return s.cli.RemoveAll(name)
 }
 
 func (s *YSStorageAdaptor) Rename(ctx context.Context, oldName, newName string) error {
 	logging.Default().Infof("rename, oldName: %s, newName: %s", oldName, newName)
 
-	return nil
+	return s.cli.Rename(oldName, newName)
 }
 
 func (s *YSStorageAdaptor) Stat(ctx context.Context, name string) (os.FileInfo, error) {
