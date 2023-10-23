@@ -78,7 +78,7 @@ func (f *ysStorageFile) Read(p []byte) (n int, err error) {
 
 	f.fileIndex += int64(len(data))
 
-	logging.Default().Infof("read result: %s", string(p))
+	//logging.Default().Infof("read result: %s", string(p))
 
 	return len(data), nil
 }

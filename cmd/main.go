@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	var err error
 	adaptor, err := webdav.NewYSStorageAdaptor()
 	if err != nil {
 		panic(fmt.Sprintf("new ys storage adaptor failed, %v", err))
