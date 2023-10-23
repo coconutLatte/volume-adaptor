@@ -2,6 +2,7 @@ package webdav
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -27,7 +28,7 @@ func NewYSStorageAdaptor() (*YSStorageAdaptor, error) {
 	}, nil
 }
 
-func (s *YSStorageAdaptor) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+func (s *YSStorageAdaptor) Mkdir(_ context.Context, name string, _ os.FileMode) error {
 	logging.Default().Infof("mkdir, name: %s", name)
 
 	return s.cli.Mkdir(name)
@@ -35,10 +36,25 @@ func (s *YSStorageAdaptor) Mkdir(ctx context.Context, name string, perm os.FileM
 
 type ysStorageFile struct {
 	cli *openapi.Client
-	f   *os.File
 
 	path      string
 	fileIndex int64
+}
+
+func newYsStorageFile(cli *openapi.Client, path string) (*ysStorageFile, error) {
+	_, err := cli.Stat(path)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		if err = cli.Create(path); err != nil {
+			return nil, os.ErrInvalid
+		}
+	}
+
+	f := &ysStorageFile{
+		cli:  cli,
+		path: path,
+	}
+
+	return f, nil
 }
 
 func (f *ysStorageFile) Read(p []byte) (n int, err error) {
@@ -151,28 +167,30 @@ func (f *ysStorageFile) Close() error {
 	return nil
 }
 
-func (s *YSStorageAdaptor) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (File, error) {
+func (s *YSStorageAdaptor) OpenFile(_ context.Context, name string, _ int, _ os.FileMode) (File, error) {
 	logging.Default().Infof("openFile, name: %s", name)
 
-	return &ysStorageFile{
-		cli:  s.cli,
-		path: name,
-	}, nil
+	f, err := newYsStorageFile(s.cli, name)
+	if err != nil {
+		return nil, os.ErrInvalid
+	}
+
+	return f, nil
 }
 
-func (s *YSStorageAdaptor) RemoveAll(ctx context.Context, name string) error {
+func (s *YSStorageAdaptor) RemoveAll(_ context.Context, name string) error {
 	logging.Default().Infof("removeAll, name: %s", name)
 
 	return s.cli.RemoveAll(name)
 }
 
-func (s *YSStorageAdaptor) Rename(ctx context.Context, oldName, newName string) error {
+func (s *YSStorageAdaptor) Rename(_ context.Context, oldName, newName string) error {
 	logging.Default().Infof("rename, oldName: %s, newName: %s", oldName, newName)
 
 	return s.cli.Rename(oldName, newName)
 }
 
-func (s *YSStorageAdaptor) Stat(ctx context.Context, name string) (os.FileInfo, error) {
+func (s *YSStorageAdaptor) Stat(_ context.Context, name string) (os.FileInfo, error) {
 	logging.Default().Infof("stat, name: %s", name)
 
 	fi, err := s.cli.Stat(name)

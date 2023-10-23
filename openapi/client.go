@@ -8,8 +8,10 @@ import (
 
 	"git.yuansuan.cn/go-kit/logging"
 	openys "git.yuansuan.cn/openapi-go"
+	"git.yuansuan.cn/openapi-go/common"
 	"git.yuansuan.cn/openapi-go/credential"
 	v20230530 "git.yuansuan.cn/project-root-api/schema/v20230530"
+	jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -31,7 +33,7 @@ func NewClient(ysId, accessKey, accessSecret string) (*Client, error) {
 		credential.NewCredential(accessKey, accessSecret),
 		openys.WithBaseURL(storageEndpoint),
 		openys.WithRetryTimes(1),
-		openys.WithRetryInterval(time.Millisecond),
+		openys.WithRetryInterval(time.Nanosecond),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create openapi client failed")
@@ -115,22 +117,18 @@ func (c *Client) Stat(path string) (os.FileInfo, error) {
 		c.base.Storage.Stat.Path(c.filePath(path)),
 	)
 	if err != nil {
-		return nil, os.ErrNotExist
+		errResp, ok := err.(*common.ErrorResp)
+		if ok {
+			if err = jsoniter.Unmarshal(errResp.RawBody(), resp); err != nil {
+				return nil, err
+			}
 
-		//errResp, ok := err.(*common.ErrorResp)
-		//if ok {
-		//	if err = jsoniter.Unmarshal(errResp.RawBody(), resp); err != nil {
-		//		return nil, err
-		//	}
-		//
-		//	logging.Default().Errorf("%#v", resp)
-		//	if resp.Response.ErrorCode == "PathNotFound" {
-		//		//return nil, os.ErrNotExist
-		//		return nil, &fs.PathError{}
-		//	}
-		//}
-		//
-		//return nil, err
+			if resp.Response.ErrorCode == "PathNotFound" {
+				return nil, os.ErrNotExist
+			}
+		}
+
+		return nil, os.ErrInvalid
 	}
 	if resp == nil || resp.Data == nil || resp.Data.File == nil {
 		return nil, fmt.Errorf("invalid stat response data")
@@ -193,6 +191,17 @@ func (c *Client) RemoveAll(path string) error {
 	_, err := c.base.Storage.Rm(
 		c.base.Storage.Rm.Path(c.filePath(path)),
 		c.base.Storage.Rm.IgnoreNotExist(true),
+	)
+	if err != nil {
+		return os.ErrInvalid
+	}
+
+	return nil
+}
+
+func (c *Client) Create(path string) error {
+	_, err := c.base.Storage.Create(
+		c.base.Storage.Create.Path(c.filePath(path)),
 	)
 	if err != nil {
 		return os.ErrInvalid
